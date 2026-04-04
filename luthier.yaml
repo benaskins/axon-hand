@@ -1,0 +1,15 @@
+name: axon-hand
+purpose: Shared chassis for factory floor agents (config, identity, CLI, lifecycle)
+use_when: Any CLI agent on the factory floor. Replaces manual LLM client setup.
+deterministic: true
+snippet:
+  imports:
+    - path: context
+    - path: github.com/benaskins/axon-hand
+      alias: hand
+    - path: github.com/benaskins/axon-talk
+      alias: talk
+  requires:
+    - github.com/benaskins/axon-hand
+  deps:
+    - axon-tool
