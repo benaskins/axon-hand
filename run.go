@@ -21,6 +21,7 @@ type RunConfig struct {
 	Version string
 	Args    []string
 	Stderr  io.Writer
+	CLI     any // Agent's CLI struct (must embed hand.CLI). If nil, a default is used.
 	Fn      AgentFunc
 }
 
@@ -32,14 +33,18 @@ func RunWith(rc RunConfig) int {
 		stderr = os.Stderr
 	}
 
-	// Parse CLI.
-	var cli struct {
-		CLI
+	// Use provided CLI struct or default.
+	cliDest := rc.CLI
+	if cliDest == nil {
+		cliDest = &struct{ CLI }{}
 	}
-	if err := ParseCLI(rc.Role, rc.Version, &cli, rc.Args); err != nil {
+	if err := ParseCLI(rc.Role, rc.Version, cliDest, rc.Args); err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", rc.Role, err)
 		return 2
 	}
+
+	// Extract the embedded CLI base.
+	base := extractCLI(cliDest)
 
 	// Load config.
 	cfg, err := LoadConfig(strings.ToUpper(rc.Role))
@@ -56,7 +61,7 @@ func RunWith(rc RunConfig) int {
 	}
 
 	// Identity and banner.
-	id := NewIdentity(rc.Role, rc.Version, cli.Name)
+	id := NewIdentity(rc.Role, rc.Version, base.Name)
 	Banner(stderr, id)
 
 	// Context with signal handling.
@@ -72,6 +77,24 @@ func RunWith(rc RunConfig) int {
 	return 0
 }
 
+// extractCLI gets the embedded CLI from an agent's CLI struct.
+func extractCLI(dest any) CLI {
+	type hasCLI interface{ GetCLI() CLI }
+	if h, ok := dest.(hasCLI); ok {
+		return h.GetCLI()
+	}
+	// Try direct type assertion for the default struct.
+	type defaultCLI struct{ CLI }
+	if d, ok := dest.(*defaultCLI); ok {
+		return d.CLI
+	}
+	return CLI{}
+}
+
+// GetCLI returns the CLI base. Agents whose CLI struct embeds hand.CLI
+// automatically satisfy this via Go embedding.
+func (c CLI) GetCLI() CLI { return c }
+
 // Run is the production entry point. It parses CLI args from os.Args,
 // loads config, builds the client, and calls fn. Exits with 0 on
 // success, 1 on agent error, 2 on config error.
@@ -81,6 +104,20 @@ func Run(role, version string, fn AgentFunc) {
 		Version: version,
 		Args:    os.Args[1:],
 		Stderr:  os.Stderr,
+		Fn:      fn,
+	})
+	os.Exit(code)
+}
+
+// RunCLI is like Run but accepts the agent's CLI struct for extended flags.
+// The CLI struct must embed hand.CLI and be a pointer.
+func RunCLI(role, version string, cli any, fn AgentFunc) {
+	code := RunWith(RunConfig{
+		Role:    role,
+		Version: version,
+		Args:    os.Args[1:],
+		Stderr:  os.Stderr,
+		CLI:     cli,
 		Fn:      fn,
 	})
 	os.Exit(code)
