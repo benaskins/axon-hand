@@ -1,8 +1,8 @@
-// Package agent provides a shared chassis for factory floor agents.
+// Package hand provides the shared chassis for factory floor agents.
 //
 // Every factory agent imports this package for LLM client configuration,
 // identity, CLI parsing, and lifecycle management.
-package agent
+package hand
 
 import (
 	"fmt"
