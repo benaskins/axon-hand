@@ -13,3 +13,5 @@ snippet:
     - github.com/benaskins/axon-hand
   deps:
     - axon-tool
+  setup: |
+    // axon-hand chassis: main() uses hand.RunCLI (see generated code below)
