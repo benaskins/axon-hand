@@ -53,15 +53,15 @@ func RunWith(rc RunConfig) int {
 		return 2
 	}
 
-	// Build client.
-	client, err := NewClient(cfg)
+	// Identity and banner.
+	id := NewIdentity(rc.Role, rc.Version, base.Name)
+
+	// Build client with identity headers for tracing.
+	client, err := NewClientWithIdentity(cfg, id)
 	if err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", rc.Role, err)
 		return 2
 	}
-
-	// Identity and banner.
-	id := NewIdentity(rc.Role, rc.Version, base.Name)
 	Banner(stderr, id)
 
 	// Context with signal handling.

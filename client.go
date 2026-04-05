@@ -16,12 +16,28 @@ import (
 //   - "openrouter": OpenRouter (default BaseURL: https://openrouter.ai/api)
 //   - "local": OpenAI-compatible local server (default BaseURL: http://localhost:11434)
 func NewClient(cfg Config) (talk.LLMClient, error) {
+	return NewClientWithIdentity(cfg, Identity{})
+}
+
+// NewClientWithIdentity constructs a talk.LLMClient with identity headers
+// for request tracing and attribution.
+func NewClientWithIdentity(cfg Config, id Identity) (talk.LLMClient, error) {
+	// Build identity headers for OpenAI-compatible providers
+	var headers map[string]string
+	if id.Role != "" {
+		headers = map[string]string{
+			"X-Title":      id.Role + "/" + id.Name,
+			"HTTP-Referer": "werkhaus:" + id.Role,
+		}
+	}
+
 	switch strings.ToLower(cfg.Provider) {
 	case "anthropic":
 		baseURL := cfg.BaseURL
 		if baseURL == "" {
 			baseURL = "https://api.anthropic.com"
 		}
+		// Anthropic client uses its own header scheme; identity via metadata later
 		return anthropic.NewClient(baseURL, cfg.APIKey), nil
 
 	case "openrouter":
@@ -29,7 +45,11 @@ func NewClient(cfg Config) (talk.LLMClient, error) {
 		if baseURL == "" {
 			baseURL = "https://openrouter.ai/api"
 		}
-		return openai.NewClient(baseURL, cfg.APIKey), nil
+		var opts []openai.Option
+		if headers != nil {
+			opts = append(opts, openai.WithHeaders(headers))
+		}
+		return openai.NewClient(baseURL, cfg.APIKey, opts...), nil
 
 	case "local":
 		baseURL := cfg.BaseURL
