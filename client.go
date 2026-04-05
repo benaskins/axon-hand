@@ -2,6 +2,7 @@ package hand
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	talk "github.com/benaskins/axon-talk"
@@ -19,16 +20,44 @@ func NewClient(cfg Config) (talk.LLMClient, error) {
 	return NewClientWithIdentity(cfg, Identity{})
 }
 
-// NewClientWithIdentity constructs a talk.LLMClient with identity headers
-// for request tracing and attribution.
+// NewClientWithIdentity constructs a talk.LLMClient with identity and
+// telemetry headers for request tracing and cost attribution.
+//
+// Headers sent on every request:
+//   - X-Title: role/instance (e.g. "mech-hand/bold-elm")
+//   - HTTP-Referer: werkhaus:card or werkhaus:role
+//   - X-Werk-Card: board card ID (from WERK_CARD env)
+//   - X-Werk-Instance: worker instance name (from WERK_INSTANCE env)
+//   - X-Werk-Attempt: retry attempt number (from WERK_ATTEMPT env)
+//   - X-Werk-Pipeline: pipeline state (from WERK_STATE env)
 func NewClientWithIdentity(cfg Config, id Identity) (talk.LLMClient, error) {
-	// Build identity headers for OpenAI-compatible providers
-	var headers map[string]string
+	headers := make(map[string]string)
+
+	// Identity
 	if id.Role != "" {
-		headers = map[string]string{
-			"X-Title":      id.Role + "/" + id.Name,
-			"HTTP-Referer": "werkhaus:" + id.Role,
-		}
+		headers["X-Title"] = id.Role + "/" + id.Name
+	}
+
+	// Telemetry from pipeline env (set by werk run)
+	card := os.Getenv("WERK_CARD")
+	if card != "" {
+		headers["HTTP-Referer"] = "werkhaus:" + card
+		headers["X-Werk-Card"] = card
+	} else if id.Role != "" {
+		headers["HTTP-Referer"] = "werkhaus:" + id.Role
+	}
+
+	if v := os.Getenv("WERK_INSTANCE"); v != "" {
+		headers["X-Werk-Instance"] = v
+	} else if id.Name != "" {
+		headers["X-Werk-Instance"] = id.Name
+	}
+
+	if v := os.Getenv("WERK_ATTEMPT"); v != "" {
+		headers["X-Werk-Attempt"] = v
+	}
+	if v := os.Getenv("WERK_STATE"); v != "" {
+		headers["X-Werk-Pipeline"] = v
 	}
 
 	switch strings.ToLower(cfg.Provider) {
