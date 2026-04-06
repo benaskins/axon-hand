@@ -4,8 +4,8 @@ github.com/alecthomas/kong v1.15.0 h1:BVJstKbpO73zKpmIu+m/aLRrNmWwxXPIGTNin9VmLV
 github.com/alecthomas/kong v1.15.0/go.mod h1:wrlbXem1CWqUV5Vbmss5ISYhsVPkBb1Yo7YKJghju2I=
 github.com/alecthomas/repr v0.5.2 h1:SU73FTI9D1P5UNtvseffFSGmdNci/O6RsqzeXJtP0Qs=
 github.com/alecthomas/repr v0.5.2/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/benaskins/axon-talk v0.8.1 h1:3SFhzOthO6vv86P6/U1IKDdqDDdNvcLZRgatURe8seE=
-github.com/benaskins/axon-talk v0.8.1/go.mod h1:5H0cQ2EzeUqYeZlt5Sz0CXmQhBJDg/fp9gdAGiUjXxI=
+github.com/benaskins/axon-talk v0.9.0 h1:go8ovdLqbBiOL4y08Ycys0LwOT9CngHEWrwI5Snx5h0=
+github.com/benaskins/axon-talk v0.9.0/go.mod h1:5H0cQ2EzeUqYeZlt5Sz0CXmQhBJDg/fp9gdAGiUjXxI=
 github.com/benaskins/axon-tape v0.1.1 h1:ZL/QJ3TQjEtcXtozp0Ww9GbuzOLRsnFIzHjV7vQJzlo=
 github.com/benaskins/axon-tape v0.1.1/go.mod h1:j7B7BlQjvqX+U5djQooLIYRZ0Njvvgj/QQGTkPzm2ag=
 github.com/benaskins/axon-tool v0.3.0 h1:YWdTbcxnE95yjp9i5BI8RyN56fyWAT9Wk57oYflfyxI=
