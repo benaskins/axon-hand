@@ -75,7 +75,7 @@ func NewClientWithIdentity(cfg Config, id Identity) (talk.LLMClient, error) {
 			baseURL = "https://openrouter.ai/api"
 		}
 		var opts []openai.Option
-		if headers != nil {
+		if len(headers) > 0 {
 			opts = append(opts, openai.WithHeaders(headers))
 		}
 		return openai.NewClient(baseURL, cfg.APIKey, opts...), nil
