@@ -20,13 +20,14 @@ func TestRun_PassesThroughIdentityAndClient(t *testing.T) {
 
 	var gotID Identity
 	var gotClient talk.LLMClient
-	var stderr bytes.Buffer
+	var stderr, stdout bytes.Buffer
 
 	code := RunWith(RunConfig{
 		Role:    "test",
 		Version: "0.1.0",
 		Args:    []string{"--name", "keen-walnut"},
 		Stderr:  &stderr,
+		Stdout:  &stdout,
 		Fn: func(ctx context.Context, id Identity, client talk.LLMClient) error {
 			gotID = id
 			gotClient = client
@@ -83,12 +84,13 @@ func TestRun_FnError(t *testing.T) {
 	t.Setenv("FACTORY_MODEL", "test-model")
 	t.Setenv("FACTORY_API_KEY", "sk-test")
 
-	var stderr bytes.Buffer
+	var stderr, stdout bytes.Buffer
 	code := RunWith(RunConfig{
 		Role:    "test",
 		Version: "0.1.0",
 		Args:    []string{},
 		Stderr:  &stderr,
+		Stdout:  &stdout,
 		Fn: func(ctx context.Context, id Identity, client talk.LLMClient) error {
 			return errors.New("something went wrong")
 		},
@@ -108,12 +110,13 @@ func TestRun_ContextCancellation(t *testing.T) {
 	t.Setenv("FACTORY_MODEL", "test-model")
 	t.Setenv("FACTORY_API_KEY", "sk-test")
 
-	var stderr bytes.Buffer
+	var stderr, stdout bytes.Buffer
 	code := RunWith(RunConfig{
 		Role:    "test",
 		Version: "0.1.0",
 		Args:    []string{},
 		Stderr:  &stderr,
+		Stdout:  &stdout,
 		Fn: func(ctx context.Context, id Identity, client talk.LLMClient) error {
 			if ctx == nil {
 				t.Error("expected non-nil context")

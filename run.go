@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	talk "github.com/benaskins/axon-talk"
 )
@@ -21,7 +22,8 @@ type RunConfig struct {
 	Version string
 	Args    []string
 	Stderr  io.Writer
-	CLI     any // Agent's CLI struct (must embed hand.CLI). If nil, a default is used.
+	Stdout  io.Writer // Where the JSON envelope is written. Defaults to os.Stdout.
+	CLI     any       // Agent's CLI struct (must embed hand.CLI). If nil, a default is used.
 	Fn      AgentFunc
 }
 
@@ -31,6 +33,10 @@ func RunWith(rc RunConfig) int {
 	stderr := rc.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
+	}
+	stdout := rc.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
 	}
 
 	// Use provided CLI struct or default.
@@ -64,16 +70,22 @@ func RunWith(rc RunConfig) int {
 	}
 	Banner(stderr, id)
 
-	// Context with signal handling.
+	// Context with signal handling and result accumulator.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	ctx, res := withResult(ctx)
+	start := time.Now()
 
 	// Run the agent.
 	if err := rc.Fn(ctx, id, client); err != nil {
+		durationMs := time.Since(start).Milliseconds()
+		writeEnvelope(stdout, durationMs, res)
 		fmt.Fprintf(stderr, "%s: error: %v\n", rc.Role, err)
 		return 1
 	}
 
+	durationMs := time.Since(start).Milliseconds()
+	writeEnvelope(stdout, durationMs, res)
 	return 0
 }
 
