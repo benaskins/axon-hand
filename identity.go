@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
+	"os"
 )
 
 // Identity holds an agent's name, role, and version.
@@ -11,6 +12,16 @@ type Identity struct {
 	Name    string
 	Role    string
 	Version string
+}
+
+// SessionID returns an OpenRouter session identifier for this agent invocation.
+// Format: {card}/{role} when dispatched by work-lead, or just {role} standalone.
+// Groups all LLM calls within one agent's run on one card.
+func (id Identity) SessionID() string {
+	if card := os.Getenv("WERK_CARD"); card != "" {
+		return card + "/" + id.Role
+	}
+	return id.Role
 }
 
 // NewIdentity creates an Identity. If supplied is empty, a random
