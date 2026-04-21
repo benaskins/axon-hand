@@ -10,7 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	looktrace "github.com/benaskins/axon-look/trace"
 	talk "github.com/benaskins/axon-talk"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // AgentFunc is the function signature for an agent's main logic.
@@ -25,6 +30,12 @@ type RunConfig struct {
 	Stdout  io.Writer // Where the JSON envelope is written. Defaults to os.Stdout.
 	CLI     any       // Agent's CLI struct (must embed hand.CLI). If nil, a default is used.
 	Fn      AgentFunc
+
+	// DisableTrace skips OTEL tracer installation and LLMClient wrapping.
+	// Tests use this to keep assertions clean; production agents leave it
+	// false so every chassis run emits an agent.<role> span with llm.call
+	// children.
+	DisableTrace bool
 }
 
 // RunWith executes the agent lifecycle and returns the exit code.
@@ -74,19 +85,48 @@ func RunWith(rc RunConfig) int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, res := withResult(ctx)
+
+	// OTEL: install a tracer provider and wrap the client so every Chat
+	// call emits an llm.call span. Open an agent.<role> span around Fn
+	// so child llm.call spans inherit the agent context.
+	if !rc.DisableTrace {
+		shutdown, traceErr := looktrace.Init(ctx, rc.Role)
+		if traceErr != nil {
+			fmt.Fprintf(stderr, "%s: trace init: %v\n", rc.Role, traceErr)
+		} else {
+			defer func() { _ = shutdown(context.Background()) }()
+			client = looktrace.WrapLLMClient(client)
+		}
+	}
+
+	tracer := otel.Tracer("github.com/benaskins/axon-hand")
+	ctx, span := tracer.Start(ctx, "agent."+rc.Role, withAgentAttrs(id))
+
 	start := time.Now()
 
 	// Run the agent.
 	if err := rc.Fn(ctx, id, client); err != nil {
 		durationMs := time.Since(start).Milliseconds()
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		span.End()
 		writeEnvelope(stdout, durationMs, res)
 		fmt.Fprintf(stderr, "%s: error: %v\n", rc.Role, err)
 		return 1
 	}
 
 	durationMs := time.Since(start).Milliseconds()
+	span.End()
 	writeEnvelope(stdout, durationMs, res)
 	return 0
+}
+
+func withAgentAttrs(id Identity) oteltrace.SpanStartOption {
+	return oteltrace.WithAttributes(
+		attribute.String("agent.role", id.Role),
+		attribute.String("agent.name", id.Name),
+		attribute.String("agent.version", id.Version),
+	)
 }
 
 // extractCLI gets the embedded CLI from an agent's CLI struct.
